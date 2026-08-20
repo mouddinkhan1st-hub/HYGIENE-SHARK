@@ -85,14 +85,26 @@ function ProductVisual({ product }: { product: Product }) {
   );
 }
 
-const amazonMedia: Record<string, string[]> = {
+const officialListingMedia: Record<string, string[]> = {
   "natural-alum-block": Array.from(
-    { length: 14 },
-    (_, i) => `/assets/amazon/natural/${String(i + 1).padStart(2, "0")}.jpg`,
+    { length: 8 },
+    (_, i) =>
+      `/assets/amazon-official/natural/${String(i + 1).padStart(2, "0")}.jpg`,
   ),
   "aloe-vera-alum-block": Array.from(
-    { length: 3 },
-    (_, i) => `/assets/amazon/aloe/${String(i + 1).padStart(2, "0")}.jpg`,
+    { length: 9 },
+    (_, i) =>
+      `/assets/amazon-official/aloe/${String(i + 1).padStart(2, "0")}.jpg`,
+  ),
+};
+const aPlusMedia: Record<string, string[]> = {
+  "natural-alum-block": Array.from(
+    { length: 5 },
+    (_, i) =>
+      `/assets/product-detail/natural_aplus/${String(i + 1).padStart(2, "0")}.png`,
+  ),
+  "aloe-vera-alum-block": ["01", "03", "05", "07", "10", "11"].map(
+    number => `/assets/product-detail/aloe_aplus/${number}.png`,
   ),
 };
 
@@ -196,7 +208,8 @@ function ProductPage({
   menu: boolean;
   setMenu: (v: boolean) => void;
 }) {
-  const media = amazonMedia[product.slug] ?? [product.image ?? ""];
+  const media = officialListingMedia[product.slug] ?? [product.image ?? ""];
+  const aPlus = aPlusMedia[product.slug] ?? [];
   const [active, setActive] = useState(media[0]);
   const isAlum = product.category.includes("Alum");
   return (
@@ -246,7 +259,7 @@ function ProductPage({
                 target="_blank"
                 rel="noreferrer"
               >
-                View current Amazon listing <ArrowRight />
+                Also available on Amazon <ArrowRight />
               </a>
             )}
             <ul>
@@ -257,21 +270,16 @@ function ProductPage({
           </div>
         </section>
         {isAlum ? (
-          <section className="pdp-amazon">
+          <section className="pdp-amazon pdp-aplus">
             <header>
-              <p className="eyebrow">Listing gallery.</p>
-              <h2>See the product in detail.</h2>
-              <p>
-                Media sourced from the brand’s linked Amazon listing. Claims
-                shown inside listing artwork remain subject to final website
-                approval.
-              </p>
+              <p className="eyebrow">The full ritual.</p>
+              <h2>More about your Alum Block.</h2>
             </header>
-            <div>
-              {media.slice(1).map(src => (
+            <div className="aplus-stack">
+              {aPlus.map((src, index) => (
                 <img
                   src={src}
-                  alt={`${product.name} listing detail`}
+                  alt={`${product.name} product story ${index + 1}`}
                   key={src}
                 />
               ))}
