@@ -1,0 +1,9 @@
+RewriteEngine On
+
+# Serve real files and asset folders normally.
+RewriteCond %{REQUEST_FILENAME} -f [OR]
+RewriteCond %{REQUEST_FILENAME} -d
+RewriteRule ^ - [L]
+
+# Send client-side storefront routes to the Vite entry point.
+RewriteRule ^ index.html [L]

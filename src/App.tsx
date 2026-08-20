@@ -31,6 +31,10 @@ type Product = {
   tone: "ice" | "aloe" | "miswak";
   image?: string;
 };
+type CartItem = {
+  slug: string;
+  quantity: number;
+};
 const products: Product[] = [
   {
     slug: "natural-alum-block",
@@ -229,7 +233,7 @@ function ProductPage({
             </p>
             <p className="product-price">${product.price.toFixed(2)}</p>
             <button className="pdp-add" onClick={() => add(product)}>
-              Add to demo cart <ShoppingBag />
+              Add to cart <ShoppingBag />
             </button>
             {isAlum && (
               <a
@@ -298,16 +302,31 @@ function ProductPage({
 }
 
 function CartPage({
-  cart,
-  setCart,
+  items,
+  setItems,
   menu,
   setMenu,
 }: {
-  cart: number;
-  setCart: (n: number) => void;
+  items: CartItem[];
+  setItems: (items: CartItem[]) => void;
   menu: boolean;
   setMenu: (v: boolean) => void;
 }) {
+  const cart = items.reduce((sum, item) => sum + item.quantity, 0);
+  const lines = items.flatMap(item => {
+    const product = products.find(p => p.slug === item.slug);
+    return product ? [{ ...item, product }] : [];
+  });
+  const subtotal = lines.reduce(
+    (sum, line) => sum + line.product.price * line.quantity,
+    0,
+  );
+  const updateQuantity = (slug: string, quantity: number) =>
+    setItems(
+      quantity <= 0
+        ? items.filter(item => item.slug !== slug)
+        : items.map(item => (item.slug === slug ? { ...item, quantity } : item)),
+    );
   return (
     <div className="site-shell core-page">
       <SiteHeader cart={cart} menu={menu} setMenu={setMenu} />
@@ -317,38 +336,39 @@ function CartPage({
         {cart ? (
           <div className="cart-layout">
             <section>
-              <div className="cart-line">
-                <img
-                  src="/assets/natural-alum.png"
-                  alt="Selected Hygiene Shark product"
-                />
-                <div>
-                  <h2>Hygiene Shark essentials</h2>
-                  <p>
-                    {cart} demo item{cart === 1 ? "" : "s"}
-                  </p>
-                  <div className="qty">
-                    <button onClick={() => setCart(Math.max(0, cart - 1))}>
-                      <Minus />
-                    </button>
-                    <span>{cart}</span>
-                    <button onClick={() => setCart(cart + 1)}>
-                      <Plus />
-                    </button>
+              {lines.map(({ product, quantity }) => (
+                <div className="cart-line" key={product.slug}>
+                  <img src={product.image} alt={`${product.name} ${product.pack}`} />
+                  <div>
+                    <h2>{product.name}</h2>
+                    <p>{product.pack} · ${product.price.toFixed(2)}</p>
+                    <div className="qty">
+                      <button
+                        aria-label={`Remove one ${product.name}`}
+                        onClick={() => updateQuantity(product.slug, quantity - 1)}
+                      >
+                        <Minus />
+                      </button>
+                      <span>{quantity}</span>
+                      <button
+                        aria-label={`Add one ${product.name}`}
+                        onClick={() => updateQuantity(product.slug, quantity + 1)}
+                      >
+                        <Plus />
+                      </button>
+                    </div>
                   </div>
                 </div>
-              </div>
+              ))}
             </section>
             <aside>
               <h2>Order summary</h2>
-              <p>
-                Final item prices, shipping and tax will appear when Stripe and
-                the live catalog are connected.
-              </p>
+              <p>Subtotal: <strong>${subtotal.toFixed(2)}</strong></p>
+              <p>Shipping and tax are calculated after checkout is activated.</p>
               <button
                 onClick={() =>
                   toast(
-                    "Checkout activates after Stripe and prices are connected",
+                    "Checkout activates after Stripe and shipping rules are connected",
                   )
                 }
               >
@@ -518,7 +538,7 @@ function ShopPage({
             className="cart"
             aria-label={`Cart with ${cart} items`}
             onClick={() =>
-              toast(`${cart} item${cart === 1 ? "" : "s"} in your demo cart`)
+              toast(`${cart} item${cart === 1 ? "" : "s"} in your cart`)
             }
           >
             <ShoppingBag />
@@ -585,7 +605,7 @@ function ShopPage({
                 <p>{p.note}</p>
                 <p className="product-price">${p.price.toFixed(2)}</p>
                 <button onClick={() => add(p)}>
-                  Add to demo cart <ShoppingBag />
+                  Add to cart <ShoppingBag />
                 </button>
                 <a className="details" href={`/products/${p.slug}`}>
                   View details <ArrowRight />
@@ -1122,20 +1142,33 @@ function StoryPage({
 }
 function App() {
   const [menu, setMenu] = useState(false);
-  const [cart, setCart] = useState(() =>
-    Number(localStorage.getItem("hs-cart") || 0),
-  );
+  const [cartItems, setCartItems] = useState<CartItem[]>(() => {
+    try {
+      const stored = JSON.parse(localStorage.getItem("hs-cart-items") || "[]");
+      return Array.isArray(stored) ? stored : [];
+    } catch {
+      return [];
+    }
+  });
+  const cart = cartItems.reduce((sum, item) => sum + item.quantity, 0);
   const [openFaq, setOpenFaq] = useState<number | null>(0);
   useEffect(() => {
     document.title = "Hygiene Shark — Forever Prepped.";
   }, []);
   const add = (p: Product) => {
-    setCart(v => {
-      const n = v + 1;
-      localStorage.setItem("hs-cart", String(n));
-      return n;
+    setCartItems(current => {
+      const found = current.find(item => item.slug === p.slug);
+      const next = found
+        ? current.map(item =>
+            item.slug === p.slug
+              ? { ...item, quantity: item.quantity + 1 }
+              : item,
+          )
+        : [...current, { slug: p.slug, quantity: 1 }];
+      localStorage.setItem("hs-cart-items", JSON.stringify(next));
+      return next;
     });
-    toast.success(`${p.name} added to your demo cart`);
+    toast.success(`${p.name} added to your cart`);
   };
   const path = window.location.pathname;
   const product = products.find(p => path === `/products/${p.slug}`);
@@ -1152,10 +1185,10 @@ function App() {
   if (path === "/cart")
     return (
       <CartPage
-        cart={cart}
-        setCart={n => {
-          setCart(n);
-          localStorage.setItem("hs-cart", String(n));
+        items={cartItems}
+        setItems={items => {
+          setCartItems(items);
+          localStorage.setItem("hs-cart-items", JSON.stringify(items));
         }}
         menu={menu}
         setMenu={setMenu}
@@ -1211,7 +1244,7 @@ function App() {
             className="cart"
             aria-label={`Cart with ${cart} items`}
             onClick={() =>
-              toast(`${cart} item${cart === 1 ? "" : "s"} in your demo cart`)
+              toast(`${cart} item${cart === 1 ? "" : "s"} in your cart`)
             }
           >
             <ShoppingBag />
@@ -1372,7 +1405,7 @@ function App() {
                 <p className="pack">{p.pack}</p>
                 <p className="note">{p.note}</p>
                 <button onClick={() => add(p)}>
-                  Add to demo cart <Plus />
+                  Add to cart <Plus />
                 </button>
               </article>
             ))}
