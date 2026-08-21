@@ -374,11 +374,9 @@ function CartPage({
               <p>Subtotal: <strong>${subtotal.toFixed(2)}</strong></p>
               <p>Shipping and tax are calculated after checkout is activated.</p>
               <button
-                onClick={() =>
-                  toast(
-                    "Checkout activates after Stripe and shipping rules are connected",
-                  )
-                }
+                onClick={() => {
+                  window.location.href = "/checkout";
+                }}
               >
                 Continue to secure checkout <ArrowRight />
               </button>
@@ -392,6 +390,147 @@ function CartPage({
       </main>
       <SiteFooter />
       <Toaster theme="dark" position="bottom-center" richColors />
+    </div>
+  );
+}
+
+function CheckoutPage({
+  items,
+  menu,
+  setMenu,
+}: {
+  items: CartItem[];
+  menu: boolean;
+  setMenu: (v: boolean) => void;
+}) {
+  const lines = items.flatMap(item => {
+    const product = products.find(p => p.slug === item.slug);
+    return product ? [{ ...item, product }] : [];
+  });
+  const cart = lines.reduce((sum, item) => sum + item.quantity, 0);
+  const subtotal = lines.reduce(
+    (sum, line) => sum + line.product.price * line.quantity,
+    0,
+  );
+
+  return (
+    <div className="site-shell core-page">
+      <SiteHeader cart={cart} menu={menu} setMenu={setMenu} />
+      <main className="checkout-page">
+        <header className="checkout-heading">
+          <p className="eyebrow">Secure checkout.</p>
+          <h1>Finish your order.</h1>
+          <p>
+            Review your essentials and delivery details. Payment activates when
+            Stripe is connected.
+          </p>
+        </header>
+        {!cart ? (
+          <section className="checkout-empty">
+            <h2>Your cart is empty.</h2>
+            <p>Add an essential before starting checkout.</p>
+            <a className="btn primary" href="/shop">
+              Shop the essentials <ArrowRight />
+            </a>
+          </section>
+        ) : (
+          <div className="checkout-layout">
+            <section className="checkout-form">
+              <div className="checkout-step">
+                <span>01</span>
+                <div>
+                  <h2>Contact</h2>
+                  <label>
+                    Email address
+                    <input type="email" autoComplete="email" placeholder="you@example.com" />
+                  </label>
+                </div>
+              </div>
+              <div className="checkout-step">
+                <span>02</span>
+                <div>
+                  <h2>Delivery address</h2>
+                  <div className="checkout-fields">
+                    <label>
+                      First name
+                      <input autoComplete="given-name" />
+                    </label>
+                    <label>
+                      Last name
+                      <input autoComplete="family-name" />
+                    </label>
+                    <label className="wide">
+                      Address
+                      <input autoComplete="street-address" />
+                    </label>
+                    <label>
+                      City
+                      <input autoComplete="address-level2" />
+                    </label>
+                    <label>
+                      State
+                      <input autoComplete="address-level1" />
+                    </label>
+                    <label>
+                      ZIP code
+                      <input autoComplete="postal-code" inputMode="numeric" />
+                    </label>
+                    <label>
+                      Country
+                      <input value="United States" readOnly />
+                    </label>
+                  </div>
+                </div>
+              </div>
+              <div className="checkout-step payment-step">
+                <span>03</span>
+                <div>
+                  <h2>Payment</h2>
+                  <div className="payment-pending">
+                    <ShieldCheck />
+                    <div>
+                      <strong>Secure Stripe payment coming next</strong>
+                      <p>No card information is collected on this page.</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </section>
+            <aside className="checkout-summary">
+              <p className="eyebrow">Order summary.</p>
+              {lines.map(({ product, quantity }) => (
+                <div className="checkout-line" key={product.slug}>
+                  <img src={product.image} alt="" />
+                  <div>
+                    <strong>{product.name}</strong>
+                    <small>{product.pack} · Qty {quantity}</small>
+                  </div>
+                  <b>${(product.price * quantity).toFixed(2)}</b>
+                </div>
+              ))}
+              <div className="checkout-total">
+                <span>Subtotal</span>
+                <strong>${subtotal.toFixed(2)}</strong>
+                <span>Shipping</span>
+                <small>Calculated after rates are confirmed</small>
+                <span>Tax</span>
+                <small>Calculated at payment</small>
+              </div>
+              <button
+                className="checkout-disabled"
+                disabled
+                title="Stripe payment is not connected yet"
+              >
+                Payment not connected <ShieldCheck />
+              </button>
+              <a className="back-to-cart" href="/cart">
+                ← Return to cart
+              </a>
+            </aside>
+          </div>
+        )}
+      </main>
+      <SiteFooter />
     </div>
   );
 }
@@ -440,14 +579,6 @@ const pageContent: Record<
       "What is Miswak? An oral-care stick from the Salvadora persica tree.",
       "How do I use them? Approved step-by-step instructions will be available on each final product page.",
       "When will checkout work? After prices, shipping rules and Stripe are connected.",
-    ],
-  },
-  "/checkout": {
-    title: "Secure Checkout",
-    intro: "Checkout is prepared for payment connection.",
-    body: [
-      "Stripe, final product prices, shipping rules and tax settings must be connected before customers can place real orders.",
-      "No payment details are collected in this preview.",
     ],
   },
   "/thank-you": {
@@ -1201,6 +1332,10 @@ function App() {
         menu={menu}
         setMenu={setMenu}
       />
+    );
+  if (path === "/checkout")
+    return (
+      <CheckoutPage items={cartItems} menu={menu} setMenu={setMenu} />
     );
   if (pageContent[path])
     return <InfoPage path={path} cart={cart} menu={menu} setMenu={setMenu} />;
